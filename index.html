@@ -1,426 +1,154 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Earth Rapture Analyzer</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10160e">
+  <title>LAST LIGHT | A Forest Escape</title>
   <style>
-    :root {
-      color-scheme: dark;
-      --ink: #e8f5f2;
-      --muted: #8ca9a6;
-      --line: rgba(139, 244, 221, 0.22);
-      --cyan: #8bf4dd;
-      --acid: #d7f57c;
-      --orange: #ffb86b;
-      --night: #071112;
-      --panel: rgba(9, 27, 28, 0.82);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      min-height: 100vh;
-      margin: 0;
-      overflow-x: hidden;
-      background:
-        radial-gradient(circle at 50% 43%, rgba(27, 91, 83, 0.35), transparent 30rem),
-        linear-gradient(135deg, #071112 0%, #091c1e 52%, #101b18 100%);
-      color: var(--ink);
-      font-family: "Courier New", Courier, monospace;
-    }
-
-    body::before {
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background-image: linear-gradient(rgba(139, 244, 221, 0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(139, 244, 221, 0.025) 1px, transparent 1px);
-      background-size: 40px 40px;
-      content: "";
-      mask-image: linear-gradient(to bottom, black, transparent 80%);
-    }
-
-    .app-shell {
-      width: min(100% - 2rem, 1100px);
-      min-height: 100vh;
-      margin: 0 auto;
-      padding: 2.25rem 0 3rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .eyebrow {
-      margin: 0 0 0.8rem;
-      color: var(--acid);
-      font-size: 0.72rem;
-      letter-spacing: 0.24em;
-      text-transform: uppercase;
-    }
-
-    h1 {
-      max-width: 760px;
-      margin: 0;
-      color: var(--ink);
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(2.25rem, 7vw, 5.4rem);
-      font-weight: 400;
-      letter-spacing: 0;
-      line-height: 0.98;
-      text-align: center;
-      text-wrap: balance;
-    }
-
-    .intro {
-      max-width: 540px;
-      margin: 1rem auto 0;
-      color: var(--muted);
-      font-size: 0.78rem;
-      line-height: 1.7;
-      text-align: center;
-    }
-
-    .analyzer {
-      width: 100%;
-      margin-top: 2rem;
-      display: grid;
-      justify-items: center;
-    }
-
-    .globe-stage {
-      position: relative;
-      width: min(90vw, 560px);
-      aspect-ratio: 1;
-      display: grid;
-      place-items: center;
-    }
-
-    .globe-stage::before,
-    .globe-stage::after {
-      position: absolute;
-      border: 1px solid var(--line);
-      border-radius: 50%;
-      content: "";
-      pointer-events: none;
-    }
-
-    .globe-stage::before {
-      inset: 3%;
-      transform: rotate(24deg) scaleX(0.4);
-    }
-
-    .globe-stage::after {
-      inset: 3%;
-      transform: rotate(-24deg) scaleX(0.4);
-    }
-
-    .globe {
-      position: relative;
-      width: 74%;
-      aspect-ratio: 1;
-      overflow: hidden;
-      border: 1px solid rgba(139, 244, 221, 0.78);
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at 32% 28%, rgba(232, 255, 238, 0.7) 0 1%, transparent 2%),
-        radial-gradient(ellipse at 38% 35%, #b3d58c 0 10%, transparent 10.5%),
-        radial-gradient(ellipse at 65% 64%, #86ad77 0 14%, transparent 14.5%),
-        radial-gradient(ellipse at 70% 28%, #b8d38c 0 8%, transparent 8.5%),
-        radial-gradient(circle at 35% 35%, #4e8276, #183f42 44%, #0a2027 72%);
-      box-shadow: 0 0 32px rgba(139, 244, 221, 0.28), inset -20px -12px 35px rgba(0, 0, 0, 0.6), inset 12px 8px 20px rgba(199, 255, 224, 0.1);
-      transition: filter 400ms ease, transform 400ms ease;
-    }
-
-    .globe::before,
-    .globe::after {
-      position: absolute;
-      inset: -10%;
-      background: repeating-linear-gradient(90deg, transparent 0 30px, rgba(139, 244, 221, 0.18) 31px 32px),
-        repeating-linear-gradient(0deg, transparent 0 30px, rgba(139, 244, 221, 0.15) 31px 32px);
-      border-radius: 50%;
-      content: "";
-      transform: rotate(-12deg) skewY(-8deg);
-    }
-
-    .globe::after {
-      background: radial-gradient(ellipse at 54% 48%, transparent 0 56%, rgba(4, 18, 23, 0.5) 74%, rgba(0, 0, 0, 0.9) 100%);
-      transform: none;
-    }
-
-    .code-stream {
-      position: absolute;
-      inset: 0;
-      overflow: hidden;
-      border-radius: 50%;
-      opacity: 0;
-      color: var(--acid);
-      font-size: clamp(0.54rem, 1.5vw, 0.7rem);
-      line-height: 1.3;
-      text-shadow: 0 0 8px rgba(124, 126, 245, 0.85);
-      transition: opacity 300ms ease;
-      z-index: 2;
-    }
-
-    .code-stream span {
-      position: absolute;
-      white-space: nowrap;
-      animation: code-fall 2.4s linear infinite;
-    }
-
-    .orbit-label {
-      position: absolute;
-      color: var(--muted);
-      font-size: 0.62rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    .orbit-label.top { top: 3%; }
-    .orbit-label.bottom { bottom: 3%; }
-    .orbit-label.left { left: 0; transform: rotate(-90deg); }
-    .orbit-label.right { right: 0; transform: rotate(90deg); }
-
-    .status {
-      min-height: 2.4rem;
-      margin-top: 1.2rem;
-      color: var(--muted);
-      font-size: 0.73rem;
-      letter-spacing: 0.12em;
-      text-align: center;
-      text-transform: uppercase;
-    }
-
-    .status strong {
-      color: var(--cyan);
-      font-weight: 400;
-    }
-
-    .analyze-button {
-      min-width: 180px;
-      margin-top: 0.7rem;
-      padding: 0.95rem 1.4rem;
-      border: 1px solid var(--cyan);
-      border-radius: 2px;
-      background: var(--cyan);
-      color: #09201f;
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
-    }
-
-    .analyze-button:hover,
-    .analyze-button:focus-visible {
-      background: var(--acid);
-      box-shadow: 0 0 24px rgba(139, 244, 221, 0.35);
-      outline: none;
-      transform: translateY(-2px);
-    }
-
-    .analyze-button:disabled {
-      cursor: wait;
-      opacity: 0.55;
-      transform: none;
-    }
-
-    .result {
-      width: min(100%, 720px);
-      min-height: 0;
-      margin-top: 1.5rem;
-      padding: 0;
-      border: 1px solid transparent;
-      background: transparent;
-      opacity: 0;
-      transform: translateY(10px);
-      transition: opacity 300ms ease, transform 300ms ease, padding 300ms ease;
-    }
-
-    .result.visible {
-      min-height: 118px;
-      padding: 1.25rem;
-      border-color: var(--line);
-      background: var(--panel);
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .result-kicker {
-      margin: 0 0 0.6rem;
-      color: var(--muted);
-      font-size: 0.65rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-    }
-
-    .result-message {
-      margin: 0;
-      color: var(--cyan);
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(1.4rem, 4vw, 2.3rem);
-    }
-
-    .result-detail {
-      margin: 0.6rem 0 0;
-      color: var(--muted);
-      font-size: 0.72rem;
-      line-height: 1.5;
-    }
-
-    .analyzing .globe {
-      animation: globe-pulse 900ms ease-in-out infinite alternate;
-      filter: saturate(1.35) brightness(1.15);
-    }
-
-    .analyzing .code-stream {
-      opacity: 0.9;
-    }
-
-    @keyframes globe-pulse {
-      from { box-shadow: 0 0 25px rgba(139, 244, 221, 0.25), inset -20px -12px 35px rgba(0, 0, 0, 0.6); }
-      to { box-shadow: 0 0 48px rgba(215, 245, 124, 0.65), inset -20px -12px 35px rgba(0, 0, 0, 0.6); }
-    }
-
-    @keyframes code-fall {
-      from { transform: translateY(-20%); opacity: 0; }
-      12%, 78% { opacity: 1; }
-      to { transform: translateY(180%); opacity: 0; }
-    }
-
-    @media (max-width: 560px) {
-      .app-shell { padding-top: 1.5rem; }
-      .intro { font-size: 0.7rem; }
-      .globe-stage { width: min(88vw, 360px); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        scroll-behavior: auto !important;
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-      }
-    }
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@500;600&display=swap');
+    :root{color-scheme:dark;--paper:#ece8d8;--muted:#a7a792;--moss:#b2c17b;--red:#d76d62;--line:#ffffff26}
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#10160e;color:var(--paper);font-family:'DM Mono',monospace}
+    button{font:inherit}
+    .game{position:relative;width:100%;height:100%;min-height:360px;isolation:isolate;background:#11180f}
+    canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+    .grain{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.13;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.88' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.23'/%3E%3C/svg%3E");mix-blend-mode:screen}
+    .topbar{position:absolute;z-index:2;inset:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:25px 30px;pointer-events:none}
+    .brand{font-family:'Playfair Display',Georgia,serif;font-size:19px;letter-spacing:.12em}
+    .brand small{display:block;margin-top:5px;color:#a8ac91;font:9px 'DM Mono',monospace;letter-spacing:.2em}
+    .readout{display:flex;gap:24px;color:#bcbca7;font-size:10px;letter-spacing:.13em;text-align:right}
+    .readout span{display:block;margin-top:6px;color:#f0eddf;font-size:13px;letter-spacing:.04em}
+    .readout .danger{color:#e58072}
+    .sound-note{position:absolute;z-index:2;bottom:24px;left:30px;color:#b2b29d;font-size:10px;letter-spacing:.11em;pointer-events:none}
+    .sound-note::before{content:"";display:inline-block;width:7px;height:7px;margin-right:10px;border-radius:50%;background:#c0ca8e;box-shadow:0 0 12px #c0ca8e;animation:pulse 2s infinite}
+    .veil{position:absolute;inset:0;z-index:3;display:grid;place-items:center;padding:24px;background:#070a0785;backdrop-filter:blur(3px);transition:opacity .35s,visibility .35s}
+    .veil[hidden]{display:none}
+    .panel{width:min(100%,450px);padding:36px 35px 32px;border-top:1px solid #ced4a456;border-bottom:1px solid #ced4a42c;background:linear-gradient(135deg,#11170fe8,#11140fdc);text-align:center;animation:arrive .5s both}
+    .kicker{margin:0 0 15px;color:#c2cb91;font-size:9px;letter-spacing:.25em;text-transform:uppercase}
+    h1{margin:0;font:500 clamp(37px,8vw,58px)/1 'Playfair Display',Georgia,serif;letter-spacing:0}
+    .description{max-width:325px;margin:18px auto 25px;color:#c1c1ad;font-size:11px;line-height:1.9}
+    .action{min-height:46px;padding:0 23px;border:1px solid #c0ca8e;background:#bdc88b;color:#171b11;font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:background .18s,transform .18s}
+    .action:hover,.action:focus-visible{background:#e2e6bc;transform:translateY(-2px);outline:2px solid #e2e6bc;outline-offset:4px}
+    .controls{display:flex;justify-content:center;gap:18px;margin-top:23px;color:#999d88;font-size:9px;letter-spacing:.06em}
+    kbd{padding:4px 6px;border:1px solid #ffffff32;color:#e6e4d5;font:inherit}
+    .death h1{color:#db7064}
+    .death .kicker{color:#d68172}
+    .mobile-pad{position:absolute;z-index:2;right:18px;bottom:22px;display:none;grid-template:repeat(2,48px)/repeat(3,48px);gap:4px;touch-action:none}
+    .mobile-pad button{border:1px solid #e8e7d640;background:#11180f9c;color:#f0eddf;font-size:17px;touch-action:none;user-select:none;-webkit-user-select:none}
+    .mobile-pad button:active{background:#bec98d;color:#141810}
+    .mobile-pad [data-dir="up"]{grid-area:1/2}.mobile-pad [data-dir="left"]{grid-area:2/1}.mobile-pad [data-dir="down"]{grid-area:2/2}.mobile-pad [data-dir="right"]{grid-area:2/3}
+    @keyframes pulse{50%{opacity:.42}}@keyframes arrive{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:640px){.topbar{padding:18px}.brand{font-size:15px}.brand small{font-size:8px}.readout{gap:14px;font-size:8px}.readout span{font-size:11px}.sound-note{left:18px;bottom:20px;font-size:8px}.mobile-pad{display:grid}.panel{padding:29px 21px 25px}.controls{gap:10px;font-size:8px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
   </style>
 </head>
 <body>
-  <main class="app-shell">
-    <p class="eyebrow">CIVILIZATION STATUS / 09.25.2026</p>
-    <h1>will the earth rapture today?</h1>
-    <p class="intro">A highly unregulated planetary forecast engine. Results are generated in real time and should not be used to make orbital decisions.</p>
-
-    <section class="analyzer" id="analyzer" aria-live="polite">
-      <div class="globe-stage">
-        <span class="orbit-label top">ORBITAL SCAN</span>
-        <span class="orbit-label bottom">SIGNAL: NOMINAL</span>
-        <span class="orbit-label left">LAT 00.000</span>
-        <span class="orbit-label right">LONG 00.000</span>
-        <div class="globe" aria-label="A stylized globe under analysis">
-          <div class="code-stream" id="codeStream"></div>
-        </div>
-      </div>
-
-      <p class="status" id="status">Awaiting command. <strong>Earth is currently intact.</strong></p>
-      <button class="analyze-button" id="analyzeButton" type="button">Analyze</button>
-    </section>
-
-    <section class="result" id="result" aria-live="polite">
-      <p class="result-kicker">Final transmission</p>
-      <p class="result-message" id="resultMessage"></p>
-      <p class="result-detail" id="resultDetail"></p>
-    </section>
+  <main class="game" aria-label="Last Light forest escape game">
+    <canvas id="world" aria-label="A moonlit forest seen from above"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+    <header class="topbar"><div class="brand">LAST LIGHT<small>BLACKPINE WOODS · 02:17 AM</small></div><div class="readout"><div>THE HOUSE<span id="distance">UNSEEN</span></div><div>IT IS <span class="danger" id="threat">NEARBY</span></div></div></header>
+    <div class="sound-note" id="status" aria-live="polite">THE WOODS ARE LISTENING</div>
+    <div class="mobile-pad" aria-label="Movement controls"><button type="button" data-dir="up" aria-label="Move up">↑</button><button type="button" data-dir="left" aria-label="Move left">←</button><button type="button" data-dir="down" aria-label="Move down">↓</button><button type="button" data-dir="right" aria-label="Move right">→</button></div>
+    <section class="veil" id="intro" aria-labelledby="intro-title"><div class="panel"><p class="kicker">You woke up somewhere unfamiliar</p><h1 id="intro-title">Find the light.</h1><p class="description">Somewhere in these woods, a house is still awake. Find it before the thing behind you finds you.</p><button class="action" id="begin" type="button">Enter the woods</button><div class="controls"><span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move</span><span><kbd>↑</kbd> <kbd>←</kbd> <kbd>↓</kbd> <kbd>→</kbd> also work</span></div></div></section>
+    <section class="veil" id="death" aria-labelledby="death-title" hidden><div class="panel death"><p class="kicker">Something found you in the dark</p><h1 id="death-title">You Died…</h1><p class="description">The forest is quiet again. You can still try to find the house.</p><button class="action" id="respawn" type="button">Respawn</button></div></section>
+    <section class="veil" id="escaped" aria-labelledby="escaped-title" hidden><div class="panel"><p class="kicker">A light left on for you</p><h1 id="escaped-title">You made it.</h1><p class="description">The door shuts behind you. Whatever was out there stays out there.</p><button class="action" id="again" type="button">Walk the woods again</button></div></section>
   </main>
-
   <script>
-    const analyzer = document.querySelector("#analyzer");
-    const analyzeButton = document.querySelector("#analyzeButton");
-    const codeStream = document.querySelector("#codeStream");
-    const status = document.querySelector("#status");
-    const result = document.querySelector("#result");
-    const resultMessage = document.querySelector("#resultMessage");
-    const resultDetail = document.querySelector("#resultDetail");
-
-    const codeSnippets = [
-      "01001001 01001110 01010100 01000001 01000011 01010100",
-      "earth.core // rapture_probability = 0.50",
-      "if (gravity === null) { return jackpot; }",
-      "<planet status=\"mostly-harmless\" />",
-      "const moon = await verify(earth);",
-      "01010011 01001001 01000111 01001110 01000001 01001100",
-      "while (world.isSpinning) { observe(); }",
-      "SYSTEM_NOTE: PLEASE REMAIN CALM"
-    ];
-
-    function renderCode() {
-      codeStream.replaceChildren();
-      const streamCount = 34;
-
-      for (let index = 0; index < streamCount; index += 1) {
-        const snippet = codeSnippets[index % codeSnippets.length];
-        const line = document.createElement("span");
-        line.textContent = snippet;
-        line.style.left = `${-18 + ((index * 17) % 125)}%`;
-        line.style.top = `${-35 - ((index * 11) % 70)}%`;
-        line.style.animationDuration = `${1.8 + (index % 5) * 0.28}s`;
-        line.style.animationDelay = `${index * -0.19}s`;
-        codeStream.append(line);
+    (()=>{
+      const canvas=document.querySelector('#world'),ctx=canvas.getContext('2d');
+      const distanceEl=document.querySelector('#distance'),threatEl=document.querySelector('#threat'),statusEl=document.querySelector('#status');
+      const overlays={intro:document.querySelector('#intro'),death:document.querySelector('#death'),escaped:document.querySelector('#escaped')};
+      const world={w:2600,h:2100},keys=new Set();
+      let width=0,height=0,dpr=1,lastTime=0,elapsed=0,state='intro';
+      let player={x:400,y:370,r:10,speed:200},monster={x:210,y:260,r:15,speed:57},house,trees,bushes,seed=4917,camera={x:0,y:0};
+      const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+      const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+      function resize(){dpr=Math.min(devicePixelRatio||1,2);width=innerWidth;height=innerHeight;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+      function makeForest(){
+          trees=[];bushes=[];seed=(Math.random()*0x100000000)>>>0;
+        for(let i=0;i<360;i++){const x=65+rand()*(world.w-130),y=65+rand()*(world.h-130);if(Math.hypot(x-400,y-370)<145||Math.hypot(x-2180,y-1680)<145)continue;trees.push({x,y,r:25+rand()*25,tint:Math.floor(rand()*4),lean:(rand()-.5)*12})}
+        for(let i=0;i<180;i++){const x=rand()*world.w,y=rand()*world.h;if(Math.hypot(x-400,y-370)<100||Math.hypot(x-2180,y-1680)<100)continue;bushes.push({x,y,r:8+rand()*16,tint:rand()})}
+        house={x:2180,y:1680};
       }
-    }
-
-    function showResult() {
-      const forecast = Math.random();
-
-      if (forecast >= 0.98) {
-        resultMessage.textContent = "JACKPOT: COSMIC PAYDAY";
-        resultDetail.textContent = "The jackpot event has been selected. The earth remains dramatically under observation.";
-      } else if (forecast >= 0.80) {
-        resultMessage.textContent = "YES. THE EARTH RAPTURES.";
-        resultDetail.textContent = "The rapture forecast has returned YES. Please enjoy your final refresh.";
-      } else {
-        resultMessage.textContent = "NO. NOT TODAY.";
-        resultDetail.textContent = "The no-explosion forecast has returned NO. Earth has been granted another spin.";
+      function reset(){
+          makeForest();
+        player={x:400,y:370,r:10,speed:200};monster={x:210,y:260,r:15,speed:57};elapsed=0;state='playing';
+        Object.values(overlays).forEach(el=>el.hidden=true);statusEl.textContent='THE WOODS ARE LISTENING';lastTime=performance.now();
       }
-
-      result.classList.add("visible");
-    }
-
-    analyzeButton.addEventListener("click", () => {
-      analyzeButton.disabled = true;
-      result.classList.remove("visible");
-      analyzer.classList.add("analyzing");
-      renderCode();
-
-      let step = 0;
-      const messages = [
-        "Opening planetary socket...",
-        "Parsing terrestrial aura...",
-        "Running totally real probability model...",
-        "Sampling tectonic mood...",
-        "Cross-referencing moon behavior...",
-        "Checking for unauthorized raptures...",
-        "Consulting the jackpot...",
-        "Compiling final planetary forecast..."
-      ];
-
-      const statusTimer = setInterval(() => {
-        status.innerHTML = `<strong>${messages[step]}</strong>`;
-        step += 1;
-        if (step === messages.length) clearInterval(statusTimer);
-      }, 1250);
-
-      window.setTimeout(() => {
-        clearInterval(statusTimer);
-        analyzer.classList.remove("analyzing");
-        status.innerHTML = "Analysis complete. <strong>Signal received.</strong>";
-        showResult();
-        analyzeButton.disabled = false;
-      }, 10000);
-    });
+      function end(which){if(state!=='playing')return;state=which;keys.clear();overlays[which==='dead'?'death':'escaped'].hidden=false;statusEl.textContent=which==='dead'?'IT FOUND YOU':'YOU ARE SAFE';}
+      function blocked(x,y,r){if(x<r||y<r||x>world.w-r||y>world.h-r)return true;return trees.some(t=>Math.hypot(x-t.x,y-t.y)<r+t.r*.63)}
+      function move(entity,dx,dy){const nx=entity.x+dx,ny=entity.y+dy;if(!blocked(nx,entity.y,entity.r))entity.x=nx;if(!blocked(entity.x,ny,entity.r))entity.y=ny}
+      function update(dt){
+        if(state!=='playing')return;elapsed+=dt;
+        let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);
+        let dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
+        const len=Math.hypot(dx,dy)||1;move(player,dx/len*player.speed*dt,dy/len*player.speed*dt);
+        const mx=player.x-monster.x,my=player.y-monster.y,md=Math.hypot(mx,my)||1;
+        const pace=monster.speed+(elapsed>24?14:elapsed>12?6:0);move(monster,mx/md*pace*dt,my/md*pace*dt);
+        if(md<25){end('dead');return}if(dist(player,house)<50){end('won');return}
+        camera.x=Math.max(0,Math.min(world.w-width,player.x-width/2));camera.y=Math.max(0,Math.min(world.h-height,player.y-height/2));
+        const hd=dist(player,house),angle=Math.atan2(house.y-player.y,house.x-player.x);
+        distanceEl.textContent=hd<95?'JUST AHEAD':`${Math.round(hd/10)*10} M ${arrow(angle)}`;
+        const danger=dist(player,monster);threatEl.textContent=danger<180?'CLOSE':danger<370?'FOLLOWING':'IN THE TREES';
+        threatEl.style.color=danger<180?'#e58072':danger<370?'#d9bd82':'';
+        if(danger<190&&Math.floor(elapsed*2)%2===0)statusEl.textContent='KEEP MOVING';else if(elapsed>22&&Math.floor(elapsed*2)%3===0)statusEl.textContent='IT IS GETTING CLOSER';
+      }
+      function arrow(a){const dirs=['E','SE','S','SW','W','NW','N','NE'];return dirs[Math.round((a+Math.PI)/(Math.PI/4)+4)%8]||'E'}
+      function circle(x,y,r,color){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill()}
+      function drawGround(){
+        ctx.fillStyle='#182019';ctx.fillRect(0,0,width,height);
+        ctx.save();ctx.translate(-camera.x,-camera.y);
+        for(let i=0;i<280;i++){const x=(i*193+47)%world.w,y=(i*317+83)%world.h;circle(x,y,1+(i%3)*.55,i%2?'#69704b20':'#b5a77b16')}
+        ctx.strokeStyle='#77735218';ctx.lineWidth=24;ctx.beginPath();ctx.moveTo(315,395);ctx.bezierCurveTo(770,620,940,390,1300,825);ctx.bezierCurveTo(1630,1190,1900,1280,2160,1670);ctx.stroke();
+        for(const b of bushes){if(b.x<camera.x-30||b.x>camera.x+width+30||b.y<camera.y-30||b.y>camera.y+height+30)continue;circle(b.x+3,b.y+5,b.r,'#080d09a8');circle(b.x,b.y,b.r,b.tint>.5?'#34442c':'#293a29');circle(b.x-b.r*.2,b.y-b.r*.3,b.r*.48,b.tint>.5?'#49513a':'#384a33')}
+        const visible=trees.filter(t=>t.x>camera.x-90&&t.x<camera.x+width+90&&t.y>camera.y-100&&t.y<camera.y+height+100).sort((a,b)=>a.y-b.y);
+        for(const t of visible)drawTree(t);
+        drawHouse();drawMonster();drawPlayer();ctx.restore();
+        drawDarkness();
+      }
+      function drawTree(t){
+        const shades=['#243326','#293829','#30382a','#202f27'],c=shades[t.tint];
+        circle(t.x+10,t.y+13,t.r*1.08,'#080d09a0');
+        ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.lean*Math.PI/180);
+        ctx.fillStyle='#514639';ctx.fillRect(-5,2,10,24);
+        circle(-t.r*.31,-t.r*.12,t.r*.72,c);circle(t.r*.3,-t.r*.23,t.r*.72,c);circle(0,-t.r*.54,t.r*.8,c);
+        circle(-t.r*.22,-t.r*.64,t.r*.37,'#65704a35');
+        ctx.restore();circle(t.x,t.y,3,'#6c6546');
+      }
+      function drawHouse(){
+        const x=house.x,y=house.y;ctx.save();ctx.translate(x,y);
+        const glow=ctx.createRadialGradient(0,-8,8,0,-8,195);glow.addColorStop(0,'#e8b96936');glow.addColorStop(1,'#e8b96900');ctx.fillStyle=glow;ctx.fillRect(-200,-205,400,400);
+        ctx.fillStyle='#080c08';ctx.fillRect(-38,-14,80,48);ctx.fillStyle='#77705a';ctx.beginPath();ctx.moveTo(-46,-13);ctx.lineTo(2,-48);ctx.lineTo(50,-13);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#e8c07a';ctx.fillRect(-26,-5,12,12);ctx.fillRect(19,-5,12,12);ctx.fillStyle='#25271e';ctx.fillRect(-6,8,15,26);
+        ctx.fillStyle='#a69c79';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText('HOME',2,53);ctx.restore();
+      }
+      function drawPlayer(){
+        ctx.save();ctx.translate(player.x,player.y);circle(0,6,14,'#05080588');circle(0,0,8,'#c9c39c');circle(0,-3,5,'#e2dec7');circle(-2,-4,1,'#25251b');circle(2,-4,1,'#25251b');ctx.restore();
+      }
+      function drawMonster(){
+        const m=monster,angle=Math.atan2(player.y-m.y,player.x-m.x);ctx.save();ctx.translate(m.x,m.y);ctx.rotate(angle+Math.PI/2);
+        circle(0,10,19,'#02050285');
+        ctx.fillStyle='#d6d7ce';ctx.beginPath();ctx.moveTo(-7,-1);ctx.lineTo(-13,28);ctx.quadraticCurveTo(0,34,13,28);ctx.lineTo(7,-1);ctx.closePath();ctx.fill();
+        ctx.strokeStyle='#d6d7ce';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-7,5);ctx.lineTo(-13,25);ctx.moveTo(7,5);ctx.lineTo(13,25);ctx.moveTo(-4,28);ctx.lineTo(-7,43);ctx.moveTo(4,28);ctx.lineTo(7,43);ctx.stroke();
+        ctx.fillStyle='#e8e8df';ctx.beginPath();ctx.ellipse(0,-8,8,12,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#1b1715';ctx.beginPath();ctx.ellipse(0,-4,5,3,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#fff9e7';for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(-4+i*1.7,-6);ctx.lineTo(-3.4+i*1.7,-3.4);ctx.lineTo(-2.8+i*1.7,-6);ctx.fill();ctx.beginPath();ctx.moveTo(-4+i*1.7,-2);ctx.lineTo(-3.4+i*1.7,-4.1);ctx.lineTo(-2.8+i*1.7,-2);ctx.fill()}
+        ctx.restore();
+      }
+      function drawDarkness(){
+        const px=player.x-camera.x,py=player.y-camera.y;
+        ctx.save();
+        const radius=Math.min(width,height)*.39,light=ctx.createRadialGradient(px,py,12,px,py,radius);light.addColorStop(0,'rgba(3,6,5,0)');light.addColorStop(.38,'rgba(3,6,5,.08)');light.addColorStop(.74,'rgba(3,6,5,.62)');light.addColorStop(1,'rgba(3,6,5,.88)');ctx.fillStyle=light;ctx.fillRect(0,0,width,height);
+        const hx=house.x-camera.x,hy=house.y-camera.y;if(hx>-130&&hx<width+130&&hy>-130&&hy<height+130){const h=ctx.createRadialGradient(hx,hy,4,hx,hy,125);h.addColorStop(0,'rgba(227,178,101,.25)');h.addColorStop(1,'rgba(227,178,101,0)');ctx.fillStyle=h;ctx.beginPath();ctx.arc(hx,hy,125,0,Math.PI*2);ctx.fill()}
+        ctx.restore();
+      }
+      function frame(now){const dt=Math.min((now-lastTime)/1000||0,.04);lastTime=now;update(dt);drawGround();requestAnimationFrame(frame)}
+      window.addEventListener('resize',resize);window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){e.preventDefault();keys.add(k)}});window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>keys.clear());
+      document.querySelector('#begin').addEventListener('click',reset);document.querySelector('#respawn').addEventListener('click',reset);document.querySelector('#again').addEventListener('click',reset);
+      document.querySelectorAll('.mobile-pad button').forEach(button=>{const dir=button.dataset.dir,lookup={up:'w',down:'s',left:'a',right:'d'};button.addEventListener('pointerdown',e=>{e.preventDefault();button.setPointerCapture(e.pointerId);keys.add(lookup[dir])});for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,()=>keys.delete(lookup[dir]))});
+      makeForest();resize();camera.x=Math.max(0,player.x-width/2);camera.y=Math.max(0,player.y-height/2);requestAnimationFrame(frame);
+    })();
   </script>
 </body>
 </html>

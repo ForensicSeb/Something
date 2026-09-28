@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Earth Rapture Analyzer</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #e8f5f2;
+      --muted: #8ca9a6;
+      --line: rgba(139, 244, 221, 0.22);
+      --cyan: #8bf4dd;
+      --acid: #d7f57c;
+      --orange: #ffb86b;
+      --night: #071112;
+      --panel: rgba(9, 27, 28, 0.82);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 50% 43%, rgba(27, 91, 83, 0.35), transparent 30rem),
+        linear-gradient(135deg, #071112 0%, #091c1e 52%, #101b18 100%);
+      color: var(--ink);
+      font-family: "Courier New", Courier, monospace;
+    }
+
+    body::before {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background-image: linear-gradient(rgba(139, 244, 221, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(139, 244, 221, 0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      content: "";
+      mask-image: linear-gradient(to bottom, black, transparent 80%);
+    }
+
+    .app-shell {
+      width: min(100% - 2rem, 1100px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 2.25rem 0 3rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .eyebrow {
+      margin: 0 0 0.8rem;
+      color: var(--acid);
+      font-size: 0.72rem;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.25rem, 7vw, 5.4rem);
+      font-weight: 400;
+      letter-spacing: 0;
+      line-height: 0.98;
+      text-align: center;
+      text-wrap: balance;
+    }
+
+    .intro {
+      max-width: 540px;
+      margin: 1rem auto 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .analyzer {
+      width: 100%;
+      margin-top: 2rem;
+      display: grid;
+      justify-items: center;
+    }
+
+    .globe-stage {
+      position: relative;
+      width: min(90vw, 560px);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    .globe-stage::before,
+    .globe-stage::after {
+      position: absolute;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      content: "";
+      pointer-events: none;
+    }
+
+    .globe-stage::before {
+      inset: 3%;
+      transform: rotate(24deg) scaleX(0.4);
+    }
+
+    .globe-stage::after {
+      inset: 3%;
+      transform: rotate(-24deg) scaleX(0.4);
+    }
+
+    .globe {
+      position: relative;
+      width: 74%;
+      aspect-ratio: 1;
+      overflow: hidden;
+      border: 1px solid rgba(139, 244, 221, 0.78);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 32% 28%, rgba(232, 255, 238, 0.7) 0 1%, transparent 2%),
+        radial-gradient(ellipse at 38% 35%, #b3d58c 0 10%, transparent 10.5%),
+        radial-gradient(ellipse at 65% 64%, #86ad77 0 14%, transparent 14.5%),
+        radial-gradient(ellipse at 70% 28%, #b8d38c 0 8%, transparent 8.5%),
+        radial-gradient(circle at 35% 35%, #4e8276, #183f42 44%, #0a2027 72%);
+      box-shadow: 0 0 32px rgba(139, 244, 221, 0.28), inset -20px -12px 35px rgba(0, 0, 0, 0.6), inset 12px 8px 20px rgba(199, 255, 224, 0.1);
+      transition: filter 400ms ease, transform 400ms ease;
+    }
+
+    .globe::before,
+    .globe::after {
+      position: absolute;
+      inset: -10%;
+      background: repeating-linear-gradient(90deg, transparent 0 30px, rgba(139, 244, 221, 0.18) 31px 32px),
+        repeating-linear-gradient(0deg, transparent 0 30px, rgba(139, 244, 221, 0.15) 31px 32px);
+      border-radius: 50%;
+      content: "";
+      transform: rotate(-12deg) skewY(-8deg);
+    }
+
+    .globe::after {
+      background: radial-gradient(ellipse at 54% 48%, transparent 0 56%, rgba(4, 18, 23, 0.5) 74%, rgba(0, 0, 0, 0.9) 100%);
+      transform: none;
+    }
+
+    .code-stream {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border-radius: 50%;
+      opacity: 0;
+      color: var(--acid);
+      font-size: clamp(0.54rem, 1.5vw, 0.7rem);
+      line-height: 1.3;
+      text-shadow: 0 0 8px rgba(215, 245, 124, 0.85);
+      transition: opacity 300ms ease;
+      z-index: 2;
+    }
+
+    .code-stream span {
+      position: absolute;
+      white-space: nowrap;
+      animation: code-fall 2.4s linear infinite;
+    }
+
+    .orbit-label {
+      position: absolute;
+      color: var(--muted);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .orbit-label.top { top: 3%; }
+    .orbit-label.bottom { bottom: 3%; }
+    .orbit-label.left { left: 0; transform: rotate(-90deg); }
+    .orbit-label.right { right: 0; transform: rotate(90deg); }
+
+    .status {
+      min-height: 2.4rem;
+      margin-top: 1.2rem;
+      color: var(--muted);
+      font-size: 0.73rem;
+      letter-spacing: 0.12em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .status strong {
+      color: var(--cyan);
+      font-weight: 400;
+    }
+
+    .analyze-button {
+      min-width: 180px;
+      margin-top: 0.7rem;
+      padding: 0.95rem 1.4rem;
+      border: 1px solid var(--cyan);
+      border-radius: 2px;
+      background: var(--cyan);
+      color: #09201f;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    .analyze-button:hover,
+    .analyze-button:focus-visible {
+      background: var(--acid);
+      box-shadow: 0 0 24px rgba(139, 244, 221, 0.35);
+      outline: none;
+      transform: translateY(-2px);
+    }
+
+    .analyze-button:disabled {
+      cursor: wait;
+      opacity: 0.55;
+      transform: none;
+    }
+
+    .result {
+      width: min(100%, 720px);
+      min-height: 0;
+      margin-top: 1.5rem;
+      padding: 0;
+      border: 1px solid transparent;
+      background: transparent;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 300ms ease, transform 300ms ease, padding 300ms ease;
+    }
+
+    .result.visible {
+      min-height: 118px;
+      padding: 1.25rem;
+      border-color: var(--line);
+      background: var(--panel);
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .result-kicker {
+      margin: 0 0 0.6rem;
+      color: var(--muted);
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .result-message {
+      margin: 0;
+      color: var(--cyan);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.4rem, 4vw, 2.3rem);
+    }
+
+    .result-detail {
+      margin: 0.6rem 0 0;
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.5;
+    }
+
+    .analyzing .globe {
+      animation: globe-pulse 900ms ease-in-out infinite alternate;
+      filter: saturate(1.35) brightness(1.15);
+    }
+
+    .analyzing .code-stream {
+      opacity: 0.9;
+    }
+
+    @keyframes globe-pulse {
+      from { box-shadow: 0 0 25px rgba(139, 244, 221, 0.25), inset -20px -12px 35px rgba(0, 0, 0, 0.6); }
+      to { box-shadow: 0 0 48px rgba(215, 245, 124, 0.65), inset -20px -12px 35px rgba(0, 0, 0, 0.6); }
+    }
+
+    @keyframes code-fall {
+      from { transform: translateY(-20%); opacity: 0; }
+      12%, 78% { opacity: 1; }
+      to { transform: translateY(180%); opacity: 0; }
+    }
+
+    @media (max-width: 560px) {
+      .app-shell { padding-top: 1.5rem; }
+      .intro { font-size: 0.7rem; }
+      .globe-stage { width: min(88vw, 360px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <p class="eyebrow">CIVILIZATION STATUS / 09.25.2026</p>
+    <h1>will the earth rapture today?</h1>
+    <p class="intro">A highly unregulated planetary forecast engine. Results are generated in real time and should not be used to make orbital decisions.</p>
+
+    <section class="analyzer" id="analyzer" aria-live="polite">
+      <div class="globe-stage">
+        <span class="orbit-label top">ORBITAL SCAN</span>
+        <span class="orbit-label bottom">SIGNAL: NOMINAL</span>
+        <span class="orbit-label left">LAT 00.000</span>
+        <span class="orbit-label right">LONG 00.000</span>
+        <div class="globe" aria-label="A stylized globe under analysis">
+          <div class="code-stream" id="codeStream"></div>
+        </div>
+      </div>
+
+      <p class="status" id="status">Awaiting command. <strong>Earth is currently intact.</strong></p>
+      <button class="analyze-button" id="analyzeButton" type="button">Analyze</button>
+    </section>
+
+    <section class="result" id="result" aria-live="polite">
+      <p class="result-kicker">Final transmission</p>
+      <p class="result-message" id="resultMessage"></p>
+      <p class="result-detail" id="resultDetail"></p>
+    </section>
+  </main>
+
+  <script>
+    const analyzer = document.querySelector("#analyzer");
+    const analyzeButton = document.querySelector("#analyzeButton");
+    const codeStream = document.querySelector("#codeStream");
+    const status = document.querySelector("#status");
+    const result = document.querySelector("#result");
+    const resultMessage = document.querySelector("#resultMessage");
+    const resultDetail = document.querySelector("#resultDetail");
+
+    const codeSnippets = [
+      "01001001 01001110 01010100 01000001 01000011 01010100",
+      "earth.core // rapture_probability = 0.50",
+      "if (gravity === null) { return jackpot; }",
+      "<planet status=\"mostly-harmless\" />",
+      "const moon = await verify(earth);",
+      "01010011 01001001 01000111 01001110 01000001 01001100",
+      "while (world.isSpinning) { observe(); }",
+      "SYSTEM_NOTE: PLEASE REMAIN CALM"
+    ];
+
+    function renderCode() {
+      codeStream.replaceChildren();
+      const streamCount = 34;
+
+      for (let index = 0; index < streamCount; index += 1) {
+        const snippet = codeSnippets[index % codeSnippets.length];
+        const line = document.createElement("span");
+        line.textContent = snippet;
+        line.style.left = `${-18 + ((index * 17) % 125)}%`;
+        line.style.top = `${-35 - ((index * 11) % 70)}%`;
+        line.style.animationDuration = `${1.8 + (index % 5) * 0.28}s`;
+        line.style.animationDelay = `${index * -0.19}s`;
+        codeStream.append(line);
+      }
+    }
+
+    function showResult() {
+      const forecast = Math.random();
+
+      if (forecast >= 0.98) {
+        resultMessage.textContent = "JACKPOT: COSMIC PAYDAY";
+        resultDetail.textContent = "The jackpot event has been selected. The earth remains dramatically under observation.";
+      } else if (forecast >= 0.80) {
+        resultMessage.textContent = "YES. THE EARTH RAPTURES.";
+        resultDetail.textContent = "The rapture forecast has returned YES. Please enjoy your final refresh.";
+      } else {
+        resultMessage.textContent = "NO. NOT TODAY.";
+        resultDetail.textContent = "The no-explosion forecast has returned NO. Earth has been granted another spin.";
+      }
+
+      result.classList.add("visible");
+    }
+
+    analyzeButton.addEventListener("click", () => {
+      analyzeButton.disabled = true;
+      result.classList.remove("visible");
+      analyzer.classList.add("analyzing");
+      renderCode();
+
+      let step = 0;
+      const messages = [
+        "Opening planetary socket...",
+        "Parsing terrestrial aura...",
+        "Running totally real probability model...",
+        "Sampling tectonic mood...",
+        "Cross-referencing moon behavior...",
+        "Checking for unauthorized raptures...",
+        "Consulting the jackpot...",
+        "Compiling final planetary forecast..."
+      ];
+
+      const statusTimer = setInterval(() => {
+        status.innerHTML = `<strong>${messages[step]}</strong>`;
+        step += 1;
+        if (step === messages.length) clearInterval(statusTimer);
+      }, 1250);
+
+      window.setTimeout(() => {
+        clearInterval(statusTimer);
+        analyzer.classList.remove("analyzing");
+        status.innerHTML = "Analysis complete. <strong>Signal received.</strong>";
+        showResult();
+        analyzeButton.disabled = false;
+      }, 10000);
+    });
+  </script>
+</body>
+</html>

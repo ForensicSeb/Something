@@ -59,9 +59,10 @@
       const canvas=document.querySelector('#world'),ctx=canvas.getContext('2d');
       const distanceEl=document.querySelector('#distance'),threatEl=document.querySelector('#threat'),statusEl=document.querySelector('#status');
       const overlays={intro:document.querySelector('#intro'),death:document.querySelector('#death'),escaped:document.querySelector('#escaped')};
-      const world={w:2600,h:2100},keys=new Set();
+      const world={w:2600,h:2100},keys=new Set(),cellSize=40;
       let width=0,height=0,dpr=1,lastTime=0,elapsed=0,state='intro';
       let player={x:400,y:370,r:10,speed:200},monster={x:210,y:260,r:15,speed:57},house,trees,bushes,seed=4917,camera={x:0,y:0};
+      let navCols=Math.ceil(world.w/cellSize),navRows=Math.ceil(world.h/cellSize),walkable=[];
       const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
       const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
       function resize(){dpr=Math.min(devicePixelRatio||1,2);width=innerWidth;height=innerHeight;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
@@ -70,10 +71,70 @@
         for(let i=0;i<360;i++){const x=65+rand()*(world.w-130),y=65+rand()*(world.h-130);if(Math.hypot(x-400,y-370)<145||Math.hypot(x-2180,y-1680)<145)continue;trees.push({x,y,r:25+rand()*25,tint:Math.floor(rand()*4),lean:(rand()-.5)*12})}
         for(let i=0;i<180;i++){const x=rand()*world.w,y=rand()*world.h;if(Math.hypot(x-400,y-370)<100||Math.hypot(x-2180,y-1680)<100)continue;bushes.push({x,y,r:8+rand()*16,tint:rand()})}
         house={x:2180,y:1680};
+        buildNavigation();
+      }
+      function nodeX(col){return Math.min(col*cellSize+cellSize/2,world.w-16)}
+      function nodeY(row){return Math.min(row*cellSize+cellSize/2,world.h-16)}
+      function buildNavigation(){
+        walkable=new Uint8Array(navCols*navRows);
+        for(let row=0;row<navRows;row++)for(let col=0;col<navCols;col++){
+          const x=nodeX(col),y=nodeY(row),index=row*navCols+col;
+          walkable[index]=trees.some(tree=>Math.hypot(x-tree.x,y-tree.y)<tree.r*.63+monster.r+cellSize*.4)?0:1;
+        }
+      }
+      function nearestOpen(x,y){
+        const col=Math.max(0,Math.min(navCols-1,Math.floor(x/cellSize))),row=Math.max(0,Math.min(navRows-1,Math.floor(y/cellSize)));
+        for(let radius=0;radius<Math.max(navCols,navRows);radius++){
+          for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
+            if(radius&&Math.abs(dx)!==radius&&Math.abs(dy)!==radius)continue;
+            const nx=col+dx,ny=row+dy;if(nx<0||ny<0||nx>=navCols||ny>=navRows)continue;
+            const index=ny*navCols+nx;if(walkable[index])return index;
+          }
+        }
+        return -1;
+      }
+      function findMonsterPath(start,target){
+        const startNode=nearestOpen(start.x,start.y),goal=nearestOpen(target.x,target.y),count=walkable.length;
+        if(startNode<0||goal<0)return [];
+        const previous=new Int32Array(count);previous.fill(-1);
+        const queue=new Int32Array(count);let head=0,tail=0;queue[tail++]=startNode;previous[startNode]=startNode;
+        const directions=[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+        while(head<tail&&previous[goal]===-1){
+          const current=queue[head++],col=current%navCols,row=Math.floor(current/navCols);
+          for(const [dx,dy] of directions){
+            const nx=col+dx,ny=row+dy;if(nx<0||ny<0||nx>=navCols||ny>=navRows)continue;
+            const next=ny*navCols+nx;if(!walkable[next]||previous[next]!==-1)continue;
+            if(dx&&dy&&(!walkable[row*navCols+nx]||!walkable[ny*navCols+col]))continue;
+            previous[next]=current;queue[tail++]=next;
+          }
+        }
+        if(previous[goal]===-1)return [];
+        const path=[];for(let node=goal;node!==startNode;node=previous[node])path.push(node);
+        path.reverse();return path;
+      }
+      function steerMonster(dt){
+        const dx=player.x-monster.x,dy=player.y-monster.y,distance=Math.hypot(dx,dy);if(!distance)return;
+        const angle=Math.atan2(dy,dx),step=monster.speed*dt,turns=[0,.55,-.55,1,-1,1.57,-1.57,2.1,-2.1,Math.PI];let bestScore=Infinity,bestX=monster.x,bestY=monster.y;
+        for(const turn of turns){const nextX=monster.x+Math.cos(angle+turn)*step,nextY=monster.y+Math.sin(angle+turn)*step;if(blocked(nextX,nextY,monster.r))continue;const score=Math.hypot(player.x-nextX,player.y-nextY)+Math.abs(turn)*step*.025;if(score<bestScore){bestScore=score;bestX=nextX;bestY=nextY}}
+        monster.x=bestX;monster.y=bestY;
+      }
+      function moveMonster(dt){
+        monster.repath=(monster.repath||0)-dt;
+        if(monster.repath<=0){monster.path=findMonsterPath(monster,player);monster.repath=.35}
+        const waypoint=monster.path[0];
+        if(waypoint===undefined){
+          steerMonster(dt);return;
+        }
+        const targetX=nodeX(waypoint%navCols),targetY=nodeY(Math.floor(waypoint/navCols));
+        const dx=targetX-monster.x,dy=targetY-monster.y,distance=Math.hypot(dx,dy);
+        if(distance<5){monster.path.shift();return}
+        const step=Math.min(monster.speed*dt,distance),mx=dx/distance*step,my=dy/distance*step;
+        const oldX=monster.x,oldY=monster.y;move(monster,mx,my);
+        if(Math.hypot(monster.x-oldX,monster.y-oldY)<step*.2){steerMonster(dt);monster.repath=0}
       }
       function reset(){
-          makeForest();
-        player={x:400,y:370,r:10,speed:200};monster={x:210,y:260,r:15,speed:57};elapsed=0;state='playing';
+        keys.clear();makeForest();
+        player={x:400,y:370,r:10,speed:200};monster={x:210,y:260,r:15,speed:57,path:[],repath:0,bestDistance:Math.hypot(190,110),stalled:0};elapsed=0;state='playing';
         Object.values(overlays).forEach(el=>el.hidden=true);statusEl.textContent='THE WOODS ARE LISTENING';lastTime=performance.now();
       }
       function end(which){if(state!=='playing')return;state=which;keys.clear();overlays[which==='dead'?'death':'escaped'].hidden=false;statusEl.textContent=which==='dead'?'IT FOUND YOU':'YOU ARE SAFE';}
@@ -84,8 +145,11 @@
         let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);
         let dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
         const len=Math.hypot(dx,dy)||1;move(player,dx/len*player.speed*dt,dy/len*player.speed*dt);
-        const mx=player.x-monster.x,my=player.y-monster.y,md=Math.hypot(mx,my)||1;
-        const pace=monster.speed+(elapsed>24?14:elapsed>12?6:0);move(monster,mx/md*pace*dt,my/md*pace*dt);
+        const md=dist(player,monster),pace=57+(elapsed>24?14:elapsed>12?6:0);monster.speed=pace;moveMonster(dt);
+        const remaining=dist(player,monster);
+        if(remaining<monster.bestDistance-8){monster.bestDistance=remaining;monster.stalled=0}
+        else monster.stalled+=dt;
+        if(monster.stalled>1.5){monster.path=[];monster.repath=0;monster.stalled=0;monster.bestDistance=remaining;steerMonster(dt)}
         if(md<25){end('dead');return}if(dist(player,house)<50){end('won');return}
         camera.x=Math.max(0,Math.min(world.w-width,player.x-width/2));camera.y=Math.max(0,Math.min(world.h-height,player.y-height/2));
         const hd=dist(player,house),angle=Math.atan2(house.y-player.y,house.x-player.x);

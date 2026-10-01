@@ -63,10 +63,35 @@
       const world={w:2600,h:2100},keys=new Set(),cellSize=40;
       const trail=[[[315,395],[770,620],[940,390],[1300,825]],[[1300,825],[1630,1190],[1900,1280],[2160,1670]]];
       let width=0,height=0,dpr=1,lastTime=0,elapsed=0,state='intro';
-      let player={x:400,y:370,r:10,speed:200},monster={x:210,y:260,r:15,speed:57},house,trees,bushes,seed=4917,camera={x:0,y:0};
+      let player={x:400,y:370,r:10,speed:200},monster={x:210,y:260,r:15,speed:62},house,trees,bushes,seed=4917,camera={x:0,y:0};
+      let audioContext;
       let navCols=Math.ceil(world.w/cellSize),navRows=Math.ceil(world.h/cellSize),walkable=[];
       const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
       const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+      function startMusic(){
+        const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+        if(!AudioContextClass)return;
+        if(!audioContext){
+          audioContext=new AudioContextClass();
+          const master=audioContext.createGain(),filter=audioContext.createBiquadFilter();
+          filter.type='lowpass';filter.frequency.value=360;filter.Q.value=.7;master.gain.value=.15;
+          filter.connect(master);master.connect(audioContext.destination);
+          const progression=[[55,58.27,73.42,164.81],[49,58.27,73.42,146.83],[46.25,55,69.3,138.59],[51.91,61.74,77.78,155.56]],tones=[];
+          progression[0].forEach((frequency,index)=>{
+            const oscillator=audioContext.createOscillator(),voice=audioContext.createGain();
+            oscillator.type=index===2?'triangle':'sine';oscillator.frequency.value=frequency;
+            voice.gain.value=[.38,.2,.09,.025][index];oscillator.connect(voice);voice.connect(filter);oscillator.start();tones.push(oscillator);
+          });
+          const pulse=audioContext.createOscillator(),depth=audioContext.createGain();
+          pulse.frequency.value=.08;depth.gain.value=.035;pulse.connect(depth);depth.connect(master.gain);pulse.start();
+          let chord=0;
+          setInterval(()=>{
+            chord=(chord+1)%progression.length;
+            tones.forEach((tone,index)=>tone.frequency.setTargetAtTime(progression[chord][index],audioContext.currentTime,2.5));
+          },12000);
+        }
+        audioContext.resume();
+      }
       function trailDistance(x,y){
         let closest=Infinity;
         for(const [start,control1,control2,end] of trail){
@@ -154,7 +179,7 @@
       }
       function reset(){
         keys.clear();makeForest();
-        player={x:400,y:370,r:10,speed:200};monster={x:210,y:260,r:15,speed:57,path:[],repath:0,bestDistance:Math.hypot(190,110),stalled:0};elapsed=0;state='playing';
+        player={x:400,y:370,r:10,speed:200};monster={x:210,y:260,r:15,speed:62,path:[],repath:0,bestDistance:Math.hypot(190,110),stalled:0};elapsed=0;state='playing';
         Object.values(overlays).forEach(el=>el.hidden=true);statusEl.textContent='THE WOODS ARE LISTENING';lastTime=performance.now();
       }
       function end(which){if(state!=='playing')return;state=which;keys.clear();overlays[which==='dead'?'death':'escaped'].hidden=false;statusEl.textContent=which==='dead'?'IT FOUND YOU':'YOU ARE SAFE';}
@@ -165,7 +190,7 @@
         let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);
         let dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
         const len=Math.hypot(dx,dy)||1;move(player,dx/len*player.speed*dt,dy/len*player.speed*dt);
-        const md=dist(player,monster),pace=57+(elapsed>24?14:elapsed>12?6:0);monster.speed=pace;moveMonster(dt);
+        const md=dist(player,monster),pace=62+(elapsed>24?14:elapsed>12?6:0);monster.speed=pace;moveMonster(dt);
         const remaining=dist(player,monster);
         if(remaining<monster.bestDistance-8){monster.bestDistance=remaining;monster.stalled=0}
         else monster.stalled+=dt;
@@ -229,7 +254,7 @@
       }
       function frame(now){const dt=Math.min((now-lastTime)/1000||0,.04);lastTime=now;update(dt);drawGround();requestAnimationFrame(frame)}
       window.addEventListener('resize',resize);window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){e.preventDefault();keys.add(k)}});window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>keys.clear());
-      document.querySelector('#begin').addEventListener('click',reset);document.querySelector('#respawn').addEventListener('click',reset);document.querySelector('#again').addEventListener('click',reset);
+      document.querySelector('#begin').addEventListener('click',()=>{startMusic();reset()});document.querySelector('#respawn').addEventListener('click',reset);document.querySelector('#again').addEventListener('click',reset);
       document.querySelectorAll('.mobile-pad button').forEach(button=>{const dir=button.dataset.dir,lookup={up:'w',down:'s',left:'a',right:'d'};button.addEventListener('pointerdown',e=>{e.preventDefault();button.setPointerCapture(e.pointerId);keys.add(lookup[dir])});for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,()=>keys.delete(lookup[dir]))});
       makeForest();resize();camera.x=Math.max(0,player.x-width/2);camera.y=Math.max(0,player.y-height/2);requestAnimationFrame(frame);
     })();

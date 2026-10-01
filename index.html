@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#10160e">
-  <title>LAST LIGHT | A Forest Escape</title>
+  <title>FOREST BOUND | A Forest Escape
+  </title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@500;600&display=swap');
     :root{color-scheme:dark;--paper:#ece8d8;--muted:#a7a792;--moss:#b2c17b;--red:#d76d62;--line:#ffffff26}
@@ -60,15 +61,34 @@
       const distanceEl=document.querySelector('#distance'),threatEl=document.querySelector('#threat'),statusEl=document.querySelector('#status');
       const overlays={intro:document.querySelector('#intro'),death:document.querySelector('#death'),escaped:document.querySelector('#escaped')};
       const world={w:2600,h:2100},keys=new Set(),cellSize=40;
+      const trail=[[[315,395],[770,620],[940,390],[1300,825]],[[1300,825],[1630,1190],[1900,1280],[2160,1670]]];
       let width=0,height=0,dpr=1,lastTime=0,elapsed=0,state='intro';
       let player={x:400,y:370,r:10,speed:200},monster={x:210,y:260,r:15,speed:57},house,trees,bushes,seed=4917,camera={x:0,y:0};
       let navCols=Math.ceil(world.w/cellSize),navRows=Math.ceil(world.h/cellSize),walkable=[];
       const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
       const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+      function trailDistance(x,y){
+        let closest=Infinity;
+        for(const [start,control1,control2,end] of trail){
+          let previousX,previousY;
+          for(let step=0;step<=48;step++){
+            const t=step/48,u=1-t;
+            const px=u*u*u*start[0]+3*u*u*t*control1[0]+3*u*t*t*control2[0]+t*t*t*end[0];
+            const py=u*u*u*start[1]+3*u*u*t*control1[1]+3*u*t*t*control2[1]+t*t*t*end[1];
+            if(step){
+              const vx=px-previousX,vy=py-previousY,lengthSquared=vx*vx+vy*vy;
+              const projection=Math.max(0,Math.min(1,((x-previousX)*vx+(y-previousY)*vy)/lengthSquared));
+              closest=Math.min(closest,Math.hypot(x-previousX-projection*vx,y-previousY-projection*vy));
+            }
+            previousX=px;previousY=py;
+          }
+        }
+        return closest;
+      }
       function resize(){dpr=Math.min(devicePixelRatio||1,2);width=innerWidth;height=innerHeight;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
       function makeForest(){
           trees=[];bushes=[];seed=(Math.random()*0x100000000)>>>0;
-        for(let i=0;i<360;i++){const x=65+rand()*(world.w-130),y=65+rand()*(world.h-130);if(Math.hypot(x-400,y-370)<145||Math.hypot(x-2180,y-1680)<145)continue;trees.push({x,y,r:25+rand()*25,tint:Math.floor(rand()*4),lean:(rand()-.5)*12})}
+        for(let i=0;i<360;i++){const x=65+rand()*(world.w-130),y=65+rand()*(world.h-130),tree={x,y,r:25+rand()*25,tint:Math.floor(rand()*4),lean:(rand()-.5)*12};if(Math.hypot(x-400,y-370)<145||Math.hypot(x-2180,y-1680)<145||trailDistance(x,y)<tree.r*1.35+18)continue;trees.push(tree)}
         for(let i=0;i<180;i++){const x=rand()*world.w,y=rand()*world.h;if(Math.hypot(x-400,y-370)<100||Math.hypot(x-2180,y-1680)<100)continue;bushes.push({x,y,r:8+rand()*16,tint:rand()})}
         house={x:2180,y:1680};
         buildNavigation();
@@ -164,7 +184,7 @@
         ctx.fillStyle='#182019';ctx.fillRect(0,0,width,height);
         ctx.save();ctx.translate(-camera.x,-camera.y);
         for(let i=0;i<280;i++){const x=(i*193+47)%world.w,y=(i*317+83)%world.h;circle(x,y,1+(i%3)*.55,i%2?'#69704b20':'#b5a77b16')}
-        ctx.strokeStyle='#77735218';ctx.lineWidth=24;ctx.beginPath();ctx.moveTo(315,395);ctx.bezierCurveTo(770,620,940,390,1300,825);ctx.bezierCurveTo(1630,1190,1900,1280,2160,1670);ctx.stroke();
+        ctx.strokeStyle='#77735218';ctx.lineWidth=24;ctx.beginPath();ctx.moveTo(...trail[0][0]);for(const segment of trail)ctx.bezierCurveTo(...segment[1],...segment[2],...segment[3]);ctx.stroke();
         for(const b of bushes){if(b.x<camera.x-30||b.x>camera.x+width+30||b.y<camera.y-30||b.y>camera.y+height+30)continue;circle(b.x+3,b.y+5,b.r,'#080d09a8');circle(b.x,b.y,b.r,b.tint>.5?'#34442c':'#293a29');circle(b.x-b.r*.2,b.y-b.r*.3,b.r*.48,b.tint>.5?'#49513a':'#384a33')}
         const visible=trees.filter(t=>t.x>camera.x-90&&t.x<camera.x+width+90&&t.y>camera.y-100&&t.y<camera.y+height+100).sort((a,b)=>a.y-b.y);
         for(const t of visible)drawTree(t);

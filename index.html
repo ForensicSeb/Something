@@ -62,7 +62,7 @@
       const world={w:2600,h:2100},keys=new Set(),cellSize=40;
       const trail=[[[315,395],[770,620],[940,390],[1300,825]],[[1300,825],[1630,1190],[1900,1280],[2160,1670]]];
       let width=0,height=0,dpr=1,lastTime=0,elapsed=0,state='intro';
-      let player={x:400,y:370,r:10,speed:200},monster={x:210,y:260,r:15,speed:62},house,trees,bushes,seed=4917,camera={x:0,y:0};
+      let player={x:400,y:370,r:10,speed:140},monster={x:210,y:260,r:15,speed:120},house,trees,bushes,seed=4917,camera={x:0,y:0};
       let audioContext;
       let navCols=Math.ceil(world.w/cellSize),navRows=Math.ceil(world.h/cellSize),walkable=[];
       const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
@@ -178,7 +178,7 @@
       }
       function reset(){
         keys.clear();makeForest();
-        player={x:400,y:370,r:10,speed:200};monster={x:210,y:260,r:15,speed:62,path:[],repath:0,bestDistance:Math.hypot(190,110),stalled:0};elapsed=0;state='playing';
+        player={x:400,y:370,r:10,speed:140};monster={x:210,y:260,r:15,speed:120,path:[],repath:0,bestDistance:Math.hypot(190,110),stalled:0};elapsed=0;state='playing';
         Object.values(overlays).forEach(el=>el.hidden=true);statusEl.textContent='THE WOODS ARE LISTENING';lastTime=performance.now();
       }
       function end(which){if(state!=='playing')return;state=which;keys.clear();overlays[which==='dead'?'death':'escaped'].hidden=false;statusEl.textContent=which==='dead'?'IT FOUND YOU':'YOU ARE SAFE';}
@@ -189,7 +189,7 @@
         let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);
         let dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
         const len=Math.hypot(dx,dy)||1;move(player,dx/len*player.speed*dt,dy/len*player.speed*dt);
-        const md=dist(player,monster),pace=62+(elapsed>24?14:elapsed>12?6:0);monster.speed=pace;moveMonster(dt);
+        const md=dist(player,monster),pace=120+(elapsed>24?30:elapsed>12?14:0);monster.speed=pace;moveMonster(dt);
         const remaining=dist(player,monster);
         if(remaining<monster.bestDistance-8){monster.bestDistance=remaining;monster.stalled=0}
         else monster.stalled+=dt;

@@ -62,7 +62,7 @@
       const world={w:2600,h:2100},keys=new Set(),cellSize=40;
       let trail=[];
       let width=0,height=0,dpr=1,lastTime=0,elapsed=0,state='intro';
-      let player={x:400,y:370,r:10,speed:140},monster={x:210,y:260,r:15,speed:120},house,trees,bushes,seed=4917,camera={x:0,y:0};
+      let player={x:400,y:370,r:10,speed:140},monster={x:210,y:260,r:15,speed:120},house,trees,bushes,structures,seed=4917,camera={x:0,y:0};
       let audioContext;
       let navCols=Math.ceil(world.w/cellSize),navRows=Math.ceil(world.h/cellSize),walkable=[];
       const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
@@ -111,20 +111,30 @@
       }
       function resize(){dpr=Math.min(devicePixelRatio||1,2);width=innerWidth;height=innerHeight;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
       function makeForest(){
-        trees=[];bushes=[];seed=(Math.random()*0x100000000)>>>0;
+        trees=[];bushes=[];structures=[];seed=(Math.random()*0x100000000)>>>0;
         let houseX,houseY,tries=0;
         do {
           houseX=180+rand()*(world.w-360);houseY=180+rand()*(world.h-360);tries++;
-        } while (Math.hypot(houseX-400,houseY-370)<650 && tries<400);
+        } while (Math.hypot(houseX-400,houseY-370)<1100 && tries<400);
         house={x:houseX||world.w-180,y:houseY||world.h-180};
-        const start=[315,395],dx=house.x-start[0],dy=house.y-start[1],length=Math.hypot(dx,dy),bend=(rand()-.5)*Math.min(520,length*.55),offsetX=-dy/length*bend,offsetY=dx/length*bend;
-        const control=(fraction)=>[
-          Math.max(80,Math.min(world.w-80,start[0]+dx*fraction+offsetX)),
-          Math.max(80,Math.min(world.h-80,start[1]+dy*fraction+offsetY))
-        ];
-        trail=[[start,control(.32),control(.68),[house.x,house.y]]];
+        const start=[315,395],dx=house.x-start[0],dy=house.y-start[1],length=Math.hypot(dx,dy);
+        const normalX=-dy/length,normalY=dx/length;
+        const bendMagnitude=Math.min(900,Math.max(420,length*.7));
+        const bend1=(rand()-.5)*bendMagnitude;const bend2=(rand()-.5)*bendMagnitude;
+        const c1=[start[0]+dx*.33+normalX*bend1,start[1]+dy*.33+normalY*bend1];
+        const c2=[start[0]+dx*.66+normalX*bend2,start[1]+dy*.66+normalY*bend2];
+        trail=[[start,c1,c2,[house.x,house.y]]];
         for(let i=0;i<360;i++){const x=65+rand()*(world.w-130),y=65+rand()*(world.h-130),tree={x,y,r:25+rand()*25,tint:Math.floor(rand()*4),lean:(rand()-.5)*12};if(Math.hypot(x-400,y-370)<145||Math.hypot(x-house.x,y-house.y)<110||trailDistance(x,y)<tree.r*1.35+18)continue;trees.push(tree)}
         for(let i=0;i<180;i++){const x=rand()*world.w,y=rand()*world.h;if(Math.hypot(x-400,y-370)<100||Math.hypot(x-house.x,y-house.y)<80)continue;bushes.push({x,y,r:8+rand()*16,tint:rand()})}
+        for(let i=0;i<18;i++){
+          let sx,sy,structure;
+          let triesRuins=0;
+          do {
+            sx=120+rand()*(world.w-240);sy=120+rand()*(world.h-240);triesRuins++;
+            structure={x:sx,y:sy,w:18+rand()*28,h:14+rand()*24,rot:(rand()-0.5)*1.4,collapsed:rand()>.5};
+          } while (Math.hypot(sx-400,sy-370)<170 || Math.hypot(sx-house.x,sy-house.y)<130 || trailDistance(sx,sy)<45 || triesRuins<500 && structures.some(r=>Math.hypot(sx-r.x,sy-r.y)<60));
+          structures.push(structure);
+        }
         buildNavigation();
       }
       function nodeX(col){return Math.min(col*cellSize+cellSize/2,world.w-16)}
@@ -169,7 +179,7 @@
       function steerMonster(dt){
         const dx=player.x-monster.x,dy=player.y-monster.y,distance=Math.hypot(dx,dy);if(!distance)return;
         const angle=Math.atan2(dy,dx),step=monster.speed*dt,turns=[0,.55,-.55,1,-1,1.57,-1.57,2.1,-2.1,Math.PI];let bestScore=Infinity,bestX=monster.x,bestY=monster.y;
-        for(const turn of turns){const nextX=monster.x+Math.cos(angle+turn)*step,nextY=monster.y+Math.sin(angle+turn)*step;if(blocked(nextX,nextY,monster.r))continue;const score=Math.hypot(player.x-nextX,player.y-nextY)+Math.abs(turn)*step*.025;if(score<bestScore){bestScore=score;bestX=nextX;bestY=nextY}}
+        for(const turn of turns){const nextX=monster.x+Math.cos(angle+turn)*step,nextY=monster.y+Math.sin(angle+turn)*step;if(blocked(nextX,nextY,monster.r,true))continue;const score=Math.hypot(player.x-nextX,player.y-nextY)+Math.abs(turn)*step*.025;if(score<bestScore){bestScore=score;bestX=nextX;bestY=nextY}}
         monster.x=bestX;monster.y=bestY;
       }
       function moveMonster(dt){
@@ -192,8 +202,8 @@
         Object.values(overlays).forEach(el=>el.hidden=true);statusEl.textContent='THE WOODS ARE LISTENING';lastTime=performance.now();
       }
       function end(which){if(state!=='playing')return;state=which;keys.clear();overlays[which==='dead'?'death':'escaped'].hidden=false;statusEl.textContent=which==='dead'?'IT FOUND YOU':'YOU ARE SAFE';}
-      function blocked(x,y,r){if(x<r||y<r||x>world.w-r||y>world.h-r)return true;return trees.some(t=>Math.hypot(x-t.x,y-t.y)<r+t.r*.63)}
-      function move(entity,dx,dy){const nx=entity.x+dx,ny=entity.y+dy;if(!blocked(nx,entity.y,entity.r))entity.x=nx;if(!blocked(entity.x,ny,entity.r))entity.y=ny}
+      function blocked(x,y,r,ignoreTrees=false){if(x<r||y<r||x>world.w-r||y>world.h-r)return true;return !ignoreTrees && trees.some(t=>Math.hypot(x-t.x,y-t.y)<r+t.r*.63)}
+      function move(entity,dx,dy){const nx=entity.x+dx,ny=entity.y+dy;const ignoreTrees=entity===monster;if(!blocked(nx,entity.y,entity.r,ignoreTrees))entity.x=nx;if(!blocked(entity.x,ny,entity.r,ignoreTrees))entity.y=ny}
       function update(dt){
         if(state!=='playing')return;elapsed+=dt;
         let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);
@@ -220,6 +230,8 @@
         for(let i=0;i<280;i++){const x=(i*193+47)%world.w,y=(i*317+83)%world.h;circle(x,y,1+(i%3)*.55,i%2?'#69704b20':'#b5a77b16')}
         ctx.strokeStyle='#77735218';ctx.lineWidth=24;ctx.beginPath();ctx.moveTo(...trail[0][0]);for(const segment of trail)ctx.bezierCurveTo(...segment[1],...segment[2],...segment[3]);ctx.stroke();
         for(const b of bushes){if(b.x<camera.x-30||b.x>camera.x+width+30||b.y<camera.y-30||b.y>camera.y+height+30)continue;circle(b.x+3,b.y+5,b.r,'#080d09a8');circle(b.x,b.y,b.r,b.tint>.5?'#34442c':'#293a29');circle(b.x-b.r*.2,b.y-b.r*.3,b.r*.48,b.tint>.5?'#49513a':'#384a33')}
+        const visibleStructures=structures.filter(s=>s.x>camera.x-100&&s.x<camera.x+width+100&&s.y>camera.y-100&&s.y<camera.y+height+100);
+        for(const s of visibleStructures)drawStructure(s);
         const visible=trees.filter(t=>t.x>camera.x-90&&t.x<camera.x+width+90&&t.y>camera.y-100&&t.y<camera.y+height+100).sort((a,b)=>a.y-b.y);
         for(const t of visible)drawTree(t);
         drawHouse();drawMonster();drawPlayer();ctx.restore();
@@ -234,6 +246,15 @@
         circle(-t.r*.22,-t.r*.64,t.r*.37,'#65704a35');
         ctx.restore();circle(t.x,t.y,3,'#6c6546');
       }
+      function drawStructure(s){
+        ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.rot);
+        ctx.fillStyle='rgba(16,18,18,0.9)';ctx.fillRect(-s.w*.5,-s.h*.5,s.w,s.h*.75);
+        ctx.strokeStyle='rgba(119,114,94,0.9)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-s.w*.5,-s.h*.45);ctx.lineTo(0,-s.h*.9);ctx.lineTo(s.w*.5,-s.h*.45);ctx.stroke();
+        ctx.strokeStyle='rgba(150,138,110,0.6)';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(-s.w*.2,-s.h*.2);ctx.lineTo(0,s.h*.2);ctx.lineTo(s.w*.2,-s.h*.2);ctx.stroke();
+        ctx.fillStyle='rgba(93,79,62,0.75)';ctx.fillRect(-s.w*.32,s.h*.1,s.w*.2,s.h*.25);ctx.fillRect(s.w*.12,s.h*.08,s.w*.2,s.h*.3);
+        if(s.collapsed){ctx.strokeStyle='rgba(95,88,71,0.8)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-s.w*.2,s.h*.1);ctx.lineTo(0,-s.h*.4);ctx.lineTo(s.w*.2,s.h*.12);ctx.stroke();}
+        ctx.restore();
+      }
       function drawHouse(){
         const x=house.x,y=house.y;ctx.save();ctx.translate(x,y);
         const glow=ctx.createRadialGradient(0,-8,8,0,-8,195);glow.addColorStop(0,'#e8b96936');glow.addColorStop(1,'#e8b96900');ctx.fillStyle=glow;ctx.fillRect(-200,-205,400,400);
@@ -245,13 +266,30 @@
         ctx.save();ctx.translate(player.x,player.y);circle(0,6,14,'#05080588');circle(0,0,8,'#c9c39c');circle(0,-3,5,'#e2dec7');circle(-2,-4,1,'#25251b');circle(2,-4,1,'#25251b');ctx.restore();
       }
       function drawMonster(){
-        const m=monster,angle=Math.atan2(player.y-m.y,player.x-m.x);ctx.save();ctx.translate(m.x,m.y);ctx.rotate(angle+Math.PI/2);
-        circle(0,10,19,'#02050285');
-        ctx.fillStyle='#d6d7ce';ctx.beginPath();ctx.moveTo(-7,-1);ctx.lineTo(-13,28);ctx.quadraticCurveTo(0,34,13,28);ctx.lineTo(7,-1);ctx.closePath();ctx.fill();
-        ctx.strokeStyle='#d6d7ce';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-7,5);ctx.lineTo(-13,25);ctx.moveTo(7,5);ctx.lineTo(13,25);ctx.moveTo(-4,28);ctx.lineTo(-7,43);ctx.moveTo(4,28);ctx.lineTo(7,43);ctx.stroke();
-        ctx.fillStyle='#e8e8df';ctx.beginPath();ctx.ellipse(0,-8,8,12,0,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#1b1715';ctx.beginPath();ctx.ellipse(0,-4,5,3,0,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#fff9e7';for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(-4+i*1.7,-6);ctx.lineTo(-3.4+i*1.7,-3.4);ctx.lineTo(-2.8+i*1.7,-6);ctx.fill();ctx.beginPath();ctx.moveTo(-4+i*1.7,-2);ctx.lineTo(-3.4+i*1.7,-4.1);ctx.lineTo(-2.8+i*1.7,-2);ctx.fill()}
+        const m=monster,angle=Math.atan2(player.y-m.y,player.x-m.x);const drift=performance.now()*0.007;
+        ctx.save();ctx.translate(m.x,m.y);ctx.rotate(angle+Math.PI/2);
+        ctx.lineCap='round';ctx.lineJoin='round';
+
+        for(let i=0;i<6;i++){
+          const x=-18+i*8;const y=28+i*2;ctx.beginPath();ctx.fillStyle=`rgba(185,220,255,${0.06+i*0.02})`;ctx.ellipse(x,y,8+i,10+i*1.5,Math.PI/6,0,Math.PI*2);ctx.fill();
+        }
+
+        ctx.shadowColor='rgba(148, 210, 255, 0.9)';ctx.shadowBlur=26;
+        ctx.fillStyle='rgba(214,236,255,0.72)';
+        ctx.beginPath();ctx.moveTo(-16,-8);ctx.quadraticCurveTo(-30,0,-26,18);ctx.quadraticCurveTo(-6,42,0,50);ctx.quadraticCurveTo(6,42,26,18);ctx.quadraticCurveTo(30,0,16,-8);ctx.quadraticCurveTo(0,-20,-16,-8);ctx.fill();
+
+        ctx.shadowBlur=0;ctx.fillStyle='rgba(21,27,35,0.35)';ctx.beginPath();ctx.ellipse(0,16,18,32,0,0,Math.PI*2);ctx.fill();
+
+        ctx.fillStyle='rgba(237,246,255,0.92)';ctx.beginPath();ctx.ellipse(0,-6,11,16,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(10,18,28,0.88)';ctx.beginPath();ctx.ellipse(-4,-8,2.8,3.8,0,0,Math.PI*2);ctx.ellipse(4,-8,2.8,3.8,0,0,Math.PI*2);ctx.fill();
+
+        const glow=.72+Math.sin(drift)*.2;ctx.shadowColor='rgba(255, 90, 110, 0.9)';ctx.shadowBlur=14;ctx.fillStyle=`rgba(255,110,130,${glow})`;
+        ctx.beginPath();ctx.ellipse(-4,-8,1.4,2.2,0,0,Math.PI*2);ctx.ellipse(4,-8,1.4,2.2,0,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+
+        ctx.strokeStyle='rgba(210,227,244,0.82)';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-7,0);ctx.quadraticCurveTo(0,8,7,0);ctx.moveTo(-6,10);ctx.quadraticCurveTo(0,15,6,10);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-10,18);ctx.quadraticCurveTo(-4,24,-1,34);ctx.moveTo(10,18);ctx.quadraticCurveTo(4,24,1,34);ctx.stroke();
+
+        ctx.fillStyle='rgba(255, 92, 122, 0.2)';ctx.beginPath();ctx.ellipse(0,32,18,9,0,0,Math.PI*2);ctx.fill();
         ctx.restore();
       }
       function drawDarkness(){

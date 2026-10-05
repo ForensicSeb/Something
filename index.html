@@ -60,7 +60,7 @@
       const distanceEl=document.querySelector('#distance'),threatEl=document.querySelector('#threat'),statusEl=document.querySelector('#status');
       const overlays={intro:document.querySelector('#intro'),death:document.querySelector('#death'),escaped:document.querySelector('#escaped')};
       const world={w:2600,h:2100},keys=new Set(),cellSize=40;
-      const trail=[[[315,395],[770,620],[940,390],[1300,825]],[[1300,825],[1630,1190],[1900,1280],[2160,1670]]];
+      let trail=[];
       let width=0,height=0,dpr=1,lastTime=0,elapsed=0,state='intro';
       let player={x:400,y:370,r:10,speed:140},monster={x:210,y:260,r:15,speed:120},house,trees,bushes,seed=4917,camera={x:0,y:0};
       let audioContext;
@@ -111,10 +111,20 @@
       }
       function resize(){dpr=Math.min(devicePixelRatio||1,2);width=innerWidth;height=innerHeight;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
       function makeForest(){
-          trees=[];bushes=[];seed=(Math.random()*0x100000000)>>>0;
-        for(let i=0;i<360;i++){const x=65+rand()*(world.w-130),y=65+rand()*(world.h-130),tree={x,y,r:25+rand()*25,tint:Math.floor(rand()*4),lean:(rand()-.5)*12};if(Math.hypot(x-400,y-370)<145||Math.hypot(x-2180,y-1680)<145||trailDistance(x,y)<tree.r*1.35+18)continue;trees.push(tree)}
-        for(let i=0;i<180;i++){const x=rand()*world.w,y=rand()*world.h;if(Math.hypot(x-400,y-370)<100||Math.hypot(x-2180,y-1680)<100)continue;bushes.push({x,y,r:8+rand()*16,tint:rand()})}
-        house={x:2180,y:1680};
+        trees=[];bushes=[];seed=(Math.random()*0x100000000)>>>0;
+        let houseX,houseY,tries=0;
+        do {
+          houseX=180+rand()*(world.w-360);houseY=180+rand()*(world.h-360);tries++;
+        } while (Math.hypot(houseX-400,houseY-370)<650 && tries<400);
+        house={x:houseX||world.w-180,y:houseY||world.h-180};
+        const start=[315,395],dx=house.x-start[0],dy=house.y-start[1],length=Math.hypot(dx,dy),bend=(rand()-.5)*Math.min(520,length*.55),offsetX=-dy/length*bend,offsetY=dx/length*bend;
+        const control=(fraction)=>[
+          Math.max(80,Math.min(world.w-80,start[0]+dx*fraction+offsetX)),
+          Math.max(80,Math.min(world.h-80,start[1]+dy*fraction+offsetY))
+        ];
+        trail=[[start,control(.32),control(.68),[house.x,house.y]]];
+        for(let i=0;i<360;i++){const x=65+rand()*(world.w-130),y=65+rand()*(world.h-130),tree={x,y,r:25+rand()*25,tint:Math.floor(rand()*4),lean:(rand()-.5)*12};if(Math.hypot(x-400,y-370)<145||Math.hypot(x-house.x,y-house.y)<110||trailDistance(x,y)<tree.r*1.35+18)continue;trees.push(tree)}
+        for(let i=0;i<180;i++){const x=rand()*world.w,y=rand()*world.h;if(Math.hypot(x-400,y-370)<100||Math.hypot(x-house.x,y-house.y)<80)continue;bushes.push({x,y,r:8+rand()*16,tint:rand()})}
         buildNavigation();
       }
       function nodeX(col){return Math.min(col*cellSize+cellSize/2,world.w-16)}
